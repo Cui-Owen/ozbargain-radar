@@ -72,7 +72,7 @@ Codex 终端更新：
 python3 ~/.agents/skills/ozbargain-radar/install.py --agent codex
 ```
 
-固定版本：安装或更新时加 `--ref v1.0.0`。回到持续更新版加 `--ref main`。安装器使用 Git 快进合并；发现本地修改或不同仓库时停止，不覆盖文件。
+固定版本：安装或更新时加 `--ref v1.0.1`。回到持续更新版加 `--ref main`。安装器使用 Git 快进合并；发现本地修改或不同仓库时停止，不覆盖文件。
 
 不使用 Git 时，从 [Releases](https://github.com/Cui-Owen/ozbargain-radar/releases) 下载 ZIP，解压成 `ozbargain-radar` 文件夹放入技能目录；升级时替换该文件夹。
 
@@ -88,7 +88,7 @@ python3 -m unittest discover -s tests -v
 
 修改后提交 PR。报告问题时附命令、公开来源 URL、Python 版本和实际结果，入口为 [Issues](https://github.com/Cui-Owen/ozbargain-radar/issues)。
 
-维护者发布：更新 `VERSION`、`CHANGELOG.md`，提交后推送同版本标签（如 `v1.0.1`）。Actions 校验、测试并创建带 ZIP 和 SHA256 的 GitHub Release。`main` 是日常更新通道，Release 标签供固定版本使用。
+维护者发布：更新 `VERSION`、`CHANGELOG.md`，提交后推送同版本标签（如 `v1.0.2`）。Actions 校验、测试并创建带 ZIP 和 SHA256 的 GitHub Release。`main` 是日常更新通道，Release 标签供固定版本使用。
 
 基于 [Agent Skills](https://agentskills.io/) 格式；Codex 的技能发现路径见 [官方文档](https://developers.openai.com/codex/skills/)。
 

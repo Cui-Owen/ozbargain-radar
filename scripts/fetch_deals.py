@@ -209,6 +209,8 @@ def fetch_multiple_categories(categories, mode="latest", min_votes=0, limit_per_
     return category_results
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Fetch OzBargain deals (Latest chronological or Popular) with price intelligence")
     parser.add_argument("--feed", default="deals", help="deals (site-wide), or category slug: computing, electronics, gaming, fashion, groceries, etc. Can be comma-separated.")
     parser.add_argument("--mode", choices=["latest", "popular"], default=None, help="Mode: 'latest' (comprehensive real-time deals) or 'popular' (frontpage/high-vote deals).")

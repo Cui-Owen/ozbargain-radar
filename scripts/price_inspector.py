@@ -3,6 +3,7 @@
 Price Inspector - Price History & True Discount Intelligence
 Detects ATL (All-Time Low), cyclical half-price discounts, and generates validation links.
 """
+import sys
 import re
 import urllib.parse
 
@@ -94,6 +95,8 @@ def inspect_deal_pricing(title: str, description: str = "", store_url: str = "")
     }
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     sample_title = "KB's Raw Prawns Tail On Large 500g $12.00 (Was $24.00, 50% off) @ Coles"
     sample_desc = "Cheapest ever since tracking. Specials for this have been around 30% mark and this is the first time it has been to 50% ATL"
     print(inspect_deal_pricing(sample_title, sample_desc))

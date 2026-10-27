@@ -206,6 +206,8 @@ def fetch_groceries(store_filter="all", only_half_price=False, min_votes=3, limi
     return items
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Fetch Coles & Woolies Grocery Specials")
     parser.add_argument("--store", default="all", help="all, coles, woolworths, amazon")
     parser.add_argument("--half-price-only", action="store_true", help="Only half-price specials")

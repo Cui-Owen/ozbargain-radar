@@ -11,7 +11,7 @@ PATHS = {'codex': '.agents/skills', 'claude': '.claude/skills',
 
 
 def git(*args, cwd=None):
-    return subprocess.check_output(['git', *args], cwd=cwd, text=True).strip()
+    return subprocess.check_output(['git', *args], cwd=cwd, text=True, encoding='utf-8').strip()
 
 
 def install(repo, dest, ref):
@@ -40,10 +40,12 @@ def install(repo, dest, ref):
         git('clone', '--branch', ref, '--', repo, str(dest))
     print(f'Installed: {dest}')
     print(f'Version: {(dest / "VERSION").read_text().strip()} ({git("rev-parse", "--short", "HEAD", cwd=dest)})')
-    print('Use: $ozbargain-radar 帮我找今天值得看的澳洲优惠')
+    print('Use: $ozbargain-radar find Australian deals worth buying today')
 
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--agent', choices=PATHS, default='codex')
     parser.add_argument('--dest', type=Path, help='Custom skill directory, including ozbargain-radar')

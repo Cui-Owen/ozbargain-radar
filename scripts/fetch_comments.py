@@ -115,6 +115,8 @@ def fetch_deal_comments(node_or_url: str, limit: int = 25):
     }
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Fetch comments and reviews for an OzBargain deal")
     parser.add_argument("target", help="Node ID (e.g. 977982) or OzBargain URL")
     parser.add_argument("--limit", type=int, default=20, help="Maximum number of substantive comments")
