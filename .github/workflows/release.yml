@@ -2,6 +2,9 @@ name: Release
 on:
   push:
     tags: ['v*']
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 permissions:
   contents: write
 jobs:
@@ -26,4 +29,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" dist/* --title "OzBargain Radar $TAG" --generate-notes
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "OzBargain Radar $TAG" --generate-notes
+          fi
