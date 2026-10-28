@@ -1,7 +1,7 @@
 ---
 name: ozbargain-radar
 description: >-
-  查澳洲 OzBargain 最新或热门特价、Coles/Woolworths 半价帖子、商品价格线索与买家评论。
+  广泛收录澳洲 OzBargain 最新优惠（含低票新帖）、热门特价、价格线索与买家评论；超市半价仅在用户明确询问时查询。
   适用于找澳洲优惠、超市比价、判断商品值不值得买；不扫描返现、积分或礼品卡聚合站。
 ---
 
@@ -10,21 +10,29 @@ description: >-
 按需查询公开 RSS 和帖子。Python 3.9+ 标准库，无 API Key、数据库或后台服务。
 所有命令相对于本 SKILL.md 所在目录执行；不要假定用户的安装路径。
 
+## 范围与覆盖
+
+- 默认任务是广泛收录，先查最新流，再用分类流补齐；热门流只补充旧的热门帖，不能替代最新流。票数是热度，不是收录门槛；0 票、1 票及负净票新帖都保留，负票原因按证据说明。用户明确只要热门或精选时才收窄。
+- 默认扫描全站最新与全部内置分类，按 node_id 合并去重；指定品类时覆盖所选品类。每个 feed 默认读取当前返回的全部条目，不设每类 5 条、总计 20 条或 Top N 上限。
+- 用户指定今天、近几天或全部某时段时，RSS 到不了时间边界就继续读取公开最新列表／分类列表分页，直到跨过起点或页面结束；不能用提高 limit 冒充分页。无时间要求时默认范围为本次 RSS 当前快照。实际覆盖只按读到的内容表述。
+- 本次用户 prompt 明确询问 Coles／Woolworths／WWS／Woolies 半价、超市半价或超市优惠时才开启超市查询。泛问“今天优惠”“澳洲好价”“全部列出”“买菜／食品优惠”均不自动开启两家超市半价周刊。
+- 未开启超市查询时，通用抓取加 `--exclude-supermarket-half-price`，不调用 `fetch_groceries.py`；输出时也移除两家超市半价／周刊帖子，不添加超市半价章节或顺带推荐。保留其他商家与其他食品优惠。开启后超市半价独立分区，不混进一般优惠表。
+
 ## 根据问题选命令
 
 | 需求 | 命令 |
 | --- | --- |
-| 全站最新 | `python3 scripts/fetch_deals.py --latest --limit 20` |
-| 社区热门 | `python3 scripts/fetch_deals.py --popular --min-votes 15 --limit 20` |
-| 指定品类 | `python3 scripts/fetch_deals.py --feed computing,electronics --latest` |
-| 扫描各品类 | `python3 scripts/fetch_deals.py --all-categories --limit 5` |
-| 帖子声称史低 | `python3 scripts/fetch_deals.py --atl-only` |
-| 超市半价帖子 | `python3 scripts/fetch_groceries.py --half-price-only --limit 25` |
-| 单一超市 | `python3 scripts/fetch_groceries.py --store woolworths` |
+| 默认广泛扫描：全站最新 | `python3 scripts/fetch_deals.py --latest --exclude-supermarket-half-price` |
+| 默认广泛扫描：分类补齐 | `python3 scripts/fetch_deals.py --all-categories --latest --exclude-supermarket-half-price` |
+| 热门补充／明确只看热门 | `python3 scripts/fetch_deals.py --popular --exclude-supermarket-half-price` |
+| 指定品类 | `python3 scripts/fetch_deals.py --feed computing,electronics --latest --exclude-supermarket-half-price` |
+| 明确只要帖子声称史低 | `python3 scripts/fetch_deals.py --atl-only --exclude-supermarket-half-price` |
+| 明确询问超市半价 | `python3 scripts/fetch_groceries.py --half-price-only --limit 0` |
+| 明确询问单一超市 | `python3 scripts/fetch_groceries.py --store woolworths --limit 0` |
 | 商品评论 | `python3 scripts/fetch_comments.py 节点ID或OzBargain链接 --limit 25` |
 
-品类：`computing`、`electronics`、`gaming`、`groceries`、`fashion`、`home`、`mobile`、`internet`、`automotive`、`entertainment`、`dining`、`travel`。
-`--feed` 也支持完整公开 RSS 地址。`--limit` 为每个 feed 的返回上限；RSS 只有当前条目，不代表全站全部优惠。
+品类：`computing`、`electronics`、`gaming`、`groceries`、`fashion`、`home`、`mobile`、`internet`、`automotive`、`entertainment`、`dining`、`travel`、`other`。
+`--feed` 也支持完整公开 RSS 地址。`fetch_deals.py --limit 0`（默认）返回每个 feed 当前全部合格条目，正整数才截断；它不扩展 RSS 历史覆盖。最新流默认无票数过滤；`--min-votes` 只在用户要求票数门槛时使用。
 
 ## 判断依据
 
@@ -37,5 +45,27 @@ description: >-
 
 ## 输出
 
-默认中文，价格使用来源币种，澳洲报价默认 AUD。先列值得看的结果，保留商品、商家、价格／优惠码、门槛、截止或状态、来源链接；多个品类优先用表格。同一节点去重，资格不同的活动分列。
-用户问单品时优先给购买结论，再列实际价格依据和影响选择的评论。不强制固定数量或固定报告模块。
+默认中文，价格使用来源币种，澳洲报价默认 AUD。全部优惠直接在当前对话中逐条介绍；除非用户明确要求导出，不生成 Markdown、表格文件或附件来替代正文，也不只回复文件链接。
+
+### 组织与顺序
+
+- 开头用一句话交代覆盖日期／快照时间和去重后总数，随即进入优惠介绍。不堆砌统计、说明或固定模块。
+- 先介绍重点关注的优惠，再展开普通优惠、低票新帖与冷门小众；可按数码、家居、餐饮、服饰、旅行等实际品类分组，品类内也从重点到小众。分类或优先级选一套清晰层次，不重复介绍同一条。
+- 重点排序综合折扣力度、实际价格依据、用途、门槛和时效；票数只作热度信息。低票新帖也能排在前面，不能把“冷门”写成“不划算”。同等优先级按发布时间倒序。
+- 保留范围内全部合格结果，不设 Top N 或每类条数上限，不因低票、需求小或小众用途省略。条目多时分品类、分段继续展开，压缩重复措辞，不能退化成标题链接清单、只剩精选或将其余条目移到文件。
+
+### 每条优惠怎么介绍
+
+采用短标题加一小段介绍，必要时再补一行条件。每条必须让用户直接看懂“卖什么、便宜多少、怎么买、适合谁”，不能只转述帖子标题或列价格字段。
+
+**序号. 商品／活动名称与关键规格 — 到手价或折扣｜商家**
+
+介绍商品用途或活动内容，说明优惠如何构成、相比有来源的原价／常见价省多少钱或折扣多少，以及适合的人群或购买场景。紧接着写会影响成交的条件：优惠码、会员／新客资格、最低消费、邮费、自提、地区、套餐／订阅及截止时间。以实际相关条件为准，不给每条机械添加相同标签。
+
+末尾放 [优惠详情](帖子链接)，附发布时间和净票数；这些辅助信息不能挤占介绍正文。
+
+- 价格对比必须有来源；没有可靠参照价时直接介绍当前报价与优惠机制，不编造折扣比例、常见价或节省金额。原价为商家标价时写明；史低只按已取得的证据等级表述。
+- 摘要不能支撑商品介绍、价格或门槛时补读正文。条件缺失只在影响判断时写“未注明”，不铺满空字段，不虚构产品特点或购买理由。
+- 表格仅在少数同类商品需要横向比较时辅助使用，不能替代逐条介绍。不要先列一份精选再重复一份全量表。
+- 同一节点去重，资格不同的活动清楚分列。“全部”带实际时间／来源范围。超市半价仍只在本次 prompt 明确询问时出现，并独立介绍。
+- 用户问单品时优先给购买结论，再列实际价格依据和影响选择的评论，不套用全站扫描流程。

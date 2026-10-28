@@ -69,6 +69,45 @@ class RadarTests(unittest.TestCase):
             all_items = fetch_deals.fetch_feed_deals('https://example.com/rss', only_active=False)
             self.assertEqual(len(all_items), 4)
 
+    def test_latest_preserves_all_items_and_low_votes(self):
+        items = []
+        for n in range(36):
+            items.append(f'<item><title>Deal {n}</title><link>https://www.ozbargain.com.au/node/{n}</link><oz:meta votes-pos="{n % 2}" votes-neg="1" /></item>')
+        body = '<rss xmlns:oz="https://www.ozbargain.com.au"><channel>' + ''.join(items) + '</channel></rss>'
+        with patch('urllib.request.urlopen', side_effect=lambda *a, **k: Response(body)):
+            results = fetch_deals.fetch_deals()
+            self.assertEqual(len(results), 36)
+            self.assertEqual(results[0]['net_votes'], -1)
+            self.assertEqual(len(fetch_deals.fetch_deals(limit=0)), 36)
+            self.assertEqual(len(fetch_deals.fetch_deals(limit=7)), 7)
+            self.assertEqual(len(fetch_deals.fetch_deals(min_votes=0)), 18)
+            categories = fetch_deals.fetch_multiple_categories(['computing', 'gaming'])
+            self.assertEqual([len(categories[c]) for c in ['computing', 'gaming']], [36, 36])
+            self.assertEqual(fetch_deals.fetch_deals(mode='popular'), [])
+
+    def test_general_scan_excludes_only_targeted_half_price(self):
+        titles = ['Coles Half Price Weekly Specials', 'Woolworths 50% Off Coffee',
+                  'Woolies Half-Price Offers', 'WWS 半价', 'Amazon 50% Off Coffee',
+                  'Coles Mobile $99 Plan', 'Coffee Half Price']
+        body = '<rss><channel>' + ''.join(f'<item><title>{t}</title><link>https://www.ozbargain.com.au/node/{i}</link></item>' for i, t in enumerate(titles)) + '</channel></rss>'
+        with patch('urllib.request.urlopen', side_effect=lambda *a, **k: Response(body)):
+            result = fetch_deals.fetch_deals(exclude_supermarket_half_price=True)
+            self.assertEqual([x['title'] for x in result], titles[4:])
+            self.assertEqual(len(fetch_deals.fetch_deals()), 7)
+        self.assertTrue(fetch_deals.is_supermarket_half_price('Coffee 50% Off', 'https://www.coles.com.au/'))
+        self.assertFalse(fetch_deals.is_supermarket_half_price('Coffee 50% Off', 'https://www.amazon.com.au/'))
+
+    def test_grocery_full_feed_keeps_low_votes_and_later_sources(self):
+        def response(req, **kwargs):
+            store = 'Coles' if 'coles.com.au' in req.full_url else 'Woolworths'
+            offset = 0 if store == 'Coles' else 100
+            items = ''.join(f'<item><title>{store} Half Price Item {i}</title><link>https://www.ozbargain.com.au/node/{i + offset}</link></item>' for i in range(36))
+            return Response('<rss><channel>' + items + '</channel></rss>')
+        with patch('urllib.request.urlopen', side_effect=response):
+            result = fetch_groceries.fetch_groceries(only_half_price=True)
+            self.assertEqual(len(result), 72)
+            self.assertEqual(len(fetch_groceries.fetch_groceries(limit=7)), 7)
+
     def test_feed_errors_are_visible(self):
         with patch('urllib.request.urlopen', side_effect=OSError('offline')):
             with self.assertRaisesRegex(RuntimeError, 'Unable to read RSS'):

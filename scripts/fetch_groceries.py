@@ -103,7 +103,9 @@ def estimate_unit_price(title: str) -> str:
 
     return ""
 
-def fetch_groceries(store_filter="all", only_half_price=False, min_votes=3, limit=30):
+def fetch_groceries(store_filter="all", only_half_price=False, min_votes=None, limit=0):
+    if limit < 0:
+        raise ValueError("limit must be 0 (all returned RSS items) or positive")
     now = datetime.now(timezone.utc)
     seen_ids = set()
     items = []
@@ -153,7 +155,7 @@ def fetch_groceries(store_filter="all", only_half_price=False, min_votes=3, limi
 
             net_votes = votes_pos - votes_neg
 
-            if net_votes < min_votes:
+            if min_votes is not None and net_votes < min_votes:
                 continue
 
             status = deal_status(meta_elem.attrib if meta_elem is not None else {}, title, now)
@@ -185,6 +187,7 @@ def fetch_groceries(store_filter="all", only_half_price=False, min_votes=3, limi
                 "link": link,
                 "merchant_url": merchant_url,
                 "net_votes": net_votes,
+                "published": pub_date,
                 "comment_count": comment_count,
                 "expiry": expiry_str,
                 "status": status,
@@ -192,10 +195,10 @@ def fetch_groceries(store_filter="all", only_half_price=False, min_votes=3, limi
                 "snippet": desc_clean[:180] + ("..." if len(desc_clean) > 180 else "")
             })
 
-            if len(items) >= limit:
+            if limit and len(items) >= limit:
                 break
 
-        if len(items) >= limit:
+        if limit and len(items) >= limit:
             break
 
     if successful_feeds == 0:
@@ -211,8 +214,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch Coles & Woolies Grocery Specials")
     parser.add_argument("--store", default="all", help="all, coles, woolworths, amazon")
     parser.add_argument("--half-price-only", action="store_true", help="Only half-price specials")
-    parser.add_argument("--min-votes", type=int, default=3, help="Minimum net positive votes")
-    parser.add_argument("--limit", type=int, default=25, help="Maximum number of items")
+    parser.add_argument("--min-votes", type=int, default=None, help="Minimum net positive votes (default: no threshold)")
+    parser.add_argument("--limit", type=int, default=0, help="Maximum number of items; 0 (default) includes all returned RSS items")
     args = parser.parse_args()
 
     results = fetch_groceries(

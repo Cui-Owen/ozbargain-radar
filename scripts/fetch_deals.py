@@ -64,7 +64,8 @@ CORE_CATEGORIES = [
     "automotive",
     "entertainment",
     "dining-takeaway",
-    "travel"
+    "travel",
+    "other"
 ]
 
 OZB_NS = "{https://www.ozbargain.com.au}"
@@ -103,7 +104,15 @@ def resolve_feed_url(feed_key: str, mode: str = "latest") -> str:
         # Default latest mode uses /deals/feed for the category (chronological real-time stream)
         return f"https://www.ozbargain.com.au/cat/{slug}/deals/feed"
 
-def fetch_feed_deals(url: str, min_votes: int = 0, limit: int = 20, only_active: bool = True, atl_only: bool = False):
+def is_supermarket_half_price(title, merchant_url=""):
+    store = re.search(r"\b(coles|woolworths|woolies|wws)\b", title + " " + merchant_url, re.I)
+    half_price = re.search(r"half[\s-]*price|half[\s-]*off|(?:1/2|½)[\s-]*price|50\s*%\s*(?:off|discount)|半价", title, re.I)
+    return bool(store and half_price)
+
+
+def fetch_feed_deals(url: str, min_votes=None, limit: int = 0, only_active: bool = True, atl_only: bool = False, exclude_supermarket_half_price: bool = False):
+    if limit < 0:
+        raise ValueError("limit must be 0 (all returned RSS items) or positive")
     req = urllib.request.Request(
         url,
         headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) OzBargainRadar/1.1"}
@@ -146,7 +155,10 @@ def fetch_feed_deals(url: str, min_votes: int = 0, limit: int = 20, only_active:
         net_votes = votes_pos - votes_neg
 
         # 1. Minimum net votes filter
-        if net_votes < min_votes:
+        if min_votes is not None and net_votes < min_votes:
+            continue
+
+        if exclude_supermarket_half_price and is_supermarket_half_price(title, merchant_url or ""):
             continue
 
         status = deal_status(meta_elem.attrib if meta_elem is not None else {}, title, now)
@@ -178,26 +190,28 @@ def fetch_feed_deals(url: str, min_votes: int = 0, limit: int = 20, only_active:
             "price_intelligence": pricing_info
         })
 
-        if len(results) >= limit:
+        if limit and len(results) >= limit:
             break
 
     return results
 
-def fetch_deals(feed_key="deals", mode="latest", min_votes=None, limit=20, only_active=True, atl_only=False):
+def fetch_deals(feed_key="deals", mode="latest", min_votes=None, limit=0, only_active=True, atl_only=False, exclude_supermarket_half_price=False):
     # Set default min_votes based on mode
     if min_votes is None:
-        min_votes = 10 if mode == "popular" else 0
+        min_votes = 10 if mode == "popular" else None
 
     url = resolve_feed_url(feed_key, mode=mode)
-    return fetch_feed_deals(url, min_votes=min_votes, limit=limit, only_active=only_active, atl_only=atl_only)
+    return fetch_feed_deals(url, min_votes=min_votes, limit=limit, only_active=only_active, atl_only=atl_only, exclude_supermarket_half_price=exclude_supermarket_half_price)
 
-def fetch_multiple_categories(categories, mode="latest", min_votes=0, limit_per_cat=5, only_active=True, atl_only=False):
+def fetch_multiple_categories(categories, mode="latest", min_votes=None, limit_per_cat=0, only_active=True, atl_only=False, exclude_supermarket_half_price=False):
     import concurrent.futures
     category_results = {}
+    if min_votes is None and mode == "popular":
+        min_votes = 10
 
     def _fetch_single(cat):
         url = resolve_feed_url(cat, mode=mode)
-        deals = fetch_feed_deals(url, min_votes=min_votes, limit=limit_per_cat, only_active=only_active, atl_only=atl_only)
+        deals = fetch_feed_deals(url, min_votes=min_votes, limit=limit_per_cat, only_active=only_active, atl_only=atl_only, exclude_supermarket_half_price=exclude_supermarket_half_price)
         return cat, deals
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
@@ -214,11 +228,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch OzBargain deals (Latest chronological or Popular) with price intelligence")
     parser.add_argument("--feed", default="deals", help="deals (site-wide), or category slug: computing, electronics, gaming, fashion, groceries, etc. Can be comma-separated.")
     parser.add_argument("--mode", choices=["latest", "popular"], default=None, help="Mode: 'latest' (comprehensive real-time deals) or 'popular' (frontpage/high-vote deals).")
-    parser.add_argument("--latest", action="store_true", help="Force latest mode (all new deals, min-votes defaults to 0)")
+    parser.add_argument("--latest", action="store_true", help="Force latest mode (all new deals, no vote threshold by default)")
     parser.add_argument("--popular", action="store_true", help="Force popular mode (top-voted deals, min-votes defaults to 10)")
     parser.add_argument("--all-categories", action="store_true", help="Fetch comprehensive latest deals across all major categories simultaneously")
-    parser.add_argument("--min-votes", type=int, default=None, help="Minimum net positive votes (default: 0 for latest, 10 for popular)")
-    parser.add_argument("--limit", type=int, default=None, help="Max number of items to return (default: 20, or 5 per category for --all-categories)")
+    parser.add_argument("--min-votes", type=int, default=None, help="Minimum net positive votes (default: no threshold for latest, 10 for popular)")
+    parser.add_argument("--limit", type=int, default=None, help="Max number of items to return (default: 0 = all items returned by each RSS feed; positive values cap each feed)")
+    parser.add_argument("--exclude-supermarket-half-price", action="store_true", help="Exclude Coles/Woolworths half-price posts from general scans")
     parser.add_argument("--include-expired", action="store_true", help="Include expired deals")
     parser.add_argument("--atl-only", action="store_true", help="Filter strictly to All-Time Low deals")
     args = parser.parse_args()
@@ -238,38 +253,41 @@ if __name__ == "__main__":
     if args.min_votes is not None:
         min_votes = args.min_votes
     else:
-        min_votes = 10 if mode == "popular" else 0
+        min_votes = 10 if mode == "popular" else None
 
     if args.all_categories:
-        limit_per_cat = args.limit if args.limit is not None else 5
+        limit_per_cat = args.limit if args.limit is not None else 0
         deals = fetch_multiple_categories(
             CORE_CATEGORIES,
             mode=mode,
             min_votes=min_votes,
             limit_per_cat=limit_per_cat,
             only_active=not args.include_expired,
-            atl_only=args.atl_only
+            atl_only=args.atl_only,
+            exclude_supermarket_half_price=args.exclude_supermarket_half_price
         )
     elif "," in args.feed:
         cats = [c.strip() for c in args.feed.split(",") if c.strip()]
-        limit_per_cat = args.limit if args.limit is not None else 5
+        limit_per_cat = args.limit if args.limit is not None else 0
         deals = fetch_multiple_categories(
             cats,
             mode=mode,
             min_votes=min_votes,
             limit_per_cat=limit_per_cat,
             only_active=not args.include_expired,
-            atl_only=args.atl_only
+            atl_only=args.atl_only,
+            exclude_supermarket_half_price=args.exclude_supermarket_half_price
         )
     else:
-        limit = args.limit if args.limit is not None else 20
+        limit = args.limit if args.limit is not None else 0
         deals = fetch_deals(
             feed_key=args.feed,
             mode=mode,
             min_votes=min_votes,
             limit=limit,
             only_active=not args.include_expired,
-            atl_only=args.atl_only
+            atl_only=args.atl_only,
+            exclude_supermarket_half_price=args.exclude_supermarket_half_price
         )
 
     print(json.dumps(deals, ensure_ascii=False, indent=2))
