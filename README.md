@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/Cui-Owen/ozbargain-radar)](https://github.com/Cui-Owen/ozbargain-radar/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-给 AI 助手用的澳洲优惠雷达。默认广泛收录 **OzBargain 最新优惠，保留低票新帖，在对话中从重点到小众逐条介绍，可按品类分组**；热门帖作为补充，单品支持价格线索和买家评论。Coles／Woolworths 半价仅在本次请求明确询问时查询，独立展示。
+给 AI 助手用的澳洲优惠雷达。默认广泛收录 **OzBargain 最新优惠，保留低票新帖，在对话中按品类分表，从重点到小众完整介绍**；热门帖作为补充，单品支持价格线索和买家评论。Coles／Woolworths 半价仅在本次请求明确询问时查询，独立展示。
 
 Python 3.9+，抓取脚本只用标准库；无 API Key、付费接口、数据库或后台服务。安装和更新另需 Git。支持本地运行的 Codex、Claude Code、Antigravity；其他支持 `SKILL.md` 的助手可手动安装。
 
@@ -38,7 +38,7 @@ Claude Code 将最后一项改为 `--agent claude`；Antigravity 改为 `--agent
 在 Codex 中可显式写 `$ozbargain-radar`；其他助手直接说技能名称和需求：
 
 ```text
-用 ozbargain-radar 广泛查找今天的澳洲优惠，从重点到冷门小众都在对话里逐条介绍商品、折扣、到手价和门槛，附链接。
+用 ozbargain-radar 广泛查找今天的澳洲优惠，在对话里按品类分表，从重点到冷门小众完整介绍商品、折扣、到手价和门槛，附链接。
 找最近的电脑配件和游戏优惠，分别看热门和最新帖子。
 看看 Coles 和 Woolworths 的半价帖子，能确定规格的商品给出单位价格。
 分析这个 OzBargain 链接：价格是否值得买，评论里有哪些规格和配送问题？
@@ -72,7 +72,7 @@ Codex 终端更新：
 python3 ~/.agents/skills/ozbargain-radar/install.py --agent codex
 ```
 
-固定版本：安装或更新时加 `--ref v1.0.3`。回到持续更新版加 `--ref main`。安装器使用 Git 快进合并；发现本地修改或不同仓库时停止，不覆盖文件。
+固定版本：安装或更新时加 `--ref v1.0.4`。回到持续更新版加 `--ref main`。安装器使用 Git 快进合并；发现本地修改或不同仓库时停止，不覆盖文件。
 
 不使用 Git 时，从 [Releases](https://github.com/Cui-Owen/ozbargain-radar/releases) 下载 ZIP，解压成 `ozbargain-radar` 文件夹放入技能目录；升级时替换该文件夹。
 
@@ -88,7 +88,7 @@ python3 -m unittest discover -s tests -v
 
 修改后提交 PR。报告问题时附命令、公开来源 URL、Python 版本和实际结果，入口为 [Issues](https://github.com/Cui-Owen/ozbargain-radar/issues)。
 
-维护者发布：更新 `VERSION`、`CHANGELOG.md`，提交后推送同版本标签（如 `v1.0.3`）。Actions 校验、测试并创建带 ZIP 和 SHA256 的 GitHub Release。`main` 是日常更新通道，Release 标签供固定版本使用。
+维护者发布：更新 `VERSION`、`CHANGELOG.md`，提交后推送同版本标签（如 `v1.0.4`）。Actions 校验、测试并创建带 ZIP 和 SHA256 的 GitHub Release。`main` 是日常更新通道，Release 标签供固定版本使用。
 
 基于 [Agent Skills](https://agentskills.io/) 格式；Codex 的技能发现路径见 [官方文档](https://developers.openai.com/codex/skills/)。
 
