@@ -1,4 +1,4 @@
 interface:
   display_name: "OzBargain Radar"
   short_description: "广泛收录澳洲最新优惠与低票新帖；超市半价仅按需查询，支持单品评论"
-  default_prompt: "用 $ozbargain-radar 广泛查找今天的澳洲优惠，包含低票新帖，在对话里按品类分表，从重点到小众完整展示商品介绍、到手价、折扣和购买条件。"
+  default_prompt: "用 $ozbargain-radar 广泛查找今天的澳洲优惠，包含低票新帖，在对话里按品类分表，从重点到小众完整展示中文商品名与介绍、到手价、折扣和购买条件。"

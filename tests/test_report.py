@@ -25,6 +25,44 @@ def annotation(record):
 
 
 class BoundReportTests(unittest.TestCase):
+    def test_256_chinese_titles_keep_same_node_links(self):
+        sources = [source(n) for n in range(1000, 1256)]
+        items = [annotation(s) for s in sources]
+        for s, item in zip(sources, items):
+            item['title_zh'] = {'text': '汽车机油 ' + s['node_id'], 'quote': s['title']}
+        result = report.render(sources, items)
+        rows = [line for line in result.splitlines() if line.startswith('| 汽车机油 ')]
+        self.assertEqual(len(rows), 256)
+        for s, row in zip(sources, rows):
+            self.assertIn('汽车机油 ' + s['node_id'], row)
+            self.assertIn('](' + s['link'] + ')', row)
+
+    def test_chinese_product_title_preserves_identifiers_and_link(self):
+        s = source(1)
+        s['title'] = 'Gulf Western 10W-40 Engine Oil 5L $29.99 @ Auto'
+        item = annotation(s)
+        item['intro'] = {'text': '汽车发动机润滑用油', 'quote': 'Engine Oil'}
+        item['title_zh'] = {'text': 'Gulf Western 10W-40 发动机油 5L', 'quote': s['title']}
+        result = report.render([s], [item])
+        self.assertIn('Gulf Western 10W-40 发动机油 5L', result)
+        self.assertNotIn(s['title'], result)
+        self.assertIn('](https://www.ozbargain.com.au/node/1)', result)
+        for title in ['Gulf Western 10W-30 发动机油 5L',
+                      'Gulf Western 10W-40 发动机油 10L',
+                      'Gulf Western 发动机油 5L', 'Gulf Western 10W-40 Oil 5L']:
+            item['title_zh']['text'] = title
+            with self.subTest(title=title), self.assertRaises(ValueError):
+                report.render([s], [item])
+
+    def test_chinese_title_rejects_wrong_evidence_and_empty_translation(self):
+        s = source(1)
+        item = annotation(s)
+        for text, evidence in [('汽车机油', 'Oil Engine'), ('', s['title']),
+                               ('汽车机油 $29.99', s['title'])]:
+            item['title_zh'] = {'text': text, 'quote': evidence}
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                report.render([s], [item])
+
     def test_256_records_keep_original_title_link_pair_in_every_row(self):
         sources = [source(n) for n in range(1000, 1256)]
         result = report.render(sources, [annotation(s) for s in sources])

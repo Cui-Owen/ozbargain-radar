@@ -84,6 +84,7 @@ def prepare(inputs, out, batch_size=15):
         write_json(out / (prefix + '.annotations.json'), [
             {'node_id': str(r['node_id']), 'source_hash': digest(r),
              'group': '其他', 'priority': 2,
+             'title_zh': {'text': '', 'quote': r['title']},
              'intro': {'text': '', 'quote': ''},
              'offer_quote': '', 'conditions_quote': '',
              'note': {'text': '', 'quote': ''}} for r in batch])
@@ -130,6 +131,27 @@ ANNOTATION_KEYS = {'node_id', 'source_hash', 'group', 'priority', 'intro',
                    'offer_quote', 'conditions_quote', 'note'}
 
 
+def chinese_title(record, value):
+    text = explained(record, value, required=True)
+    if value['quote'] != record['title']:
+        raise ValueError('Chinese title must bind to the complete source title')
+    if not re.search(r'[\u4e00-\u9fff]', text):
+        raise ValueError('Chinese title must contain Chinese text')
+    original = record['title']
+    numbers = set(re.findall(r'\d+(?:\.\d+)?', original))
+    if not set(re.findall(r'\d+(?:\.\d+)?', text)) <= numbers:
+        raise ValueError('Chinese title introduces unsupported numbers')
+    # Preserve mixed letter/digit identifiers and technical units, e.g. P110M,
+    # 10W-40, 5L, 256GB. Ordinary count/pack wording may be translated.
+    tokens = re.findall(r'[A-Za-z0-9]+(?:[.+/\-][A-Za-z0-9]+)*', original)
+    protected = [t for t in tokens if re.search(r'[A-Za-z]', t) and re.search(r'\d', t)
+                 and not re.fullmatch(r'\d+[-/]?(?:count|pack|pk|pcs|pieces)', t, re.I)]
+    for token in protected:
+        if not re.search(r'(?<![A-Za-z0-9])' + re.escape(token) + r'(?![A-Za-z0-9])', text, re.I):
+            raise ValueError('Chinese title omits or changes identifier: ' + token)
+    return text
+
+
 def bind(records, annotations):
     sources = {identity(r): r for r in records}
     if len(sources) != len(records):
@@ -137,7 +159,7 @@ def bind(records, annotations):
     seen = set()
     bound = []
     for item in annotations:
-        if not isinstance(item, dict) or set(item) != ANNOTATION_KEYS:
+        if not isinstance(item, dict) or set(item) not in (ANNOTATION_KEYS, ANNOTATION_KEYS | {'title_zh'}):
             raise ValueError('Unexpected annotation fields')
         node = str(item['node_id'])
         if node not in sources or node in seen:
@@ -150,6 +172,8 @@ def bind(records, annotations):
             raise ValueError('Missing category')
         if type(item['priority']) is not int or not 0 <= item['priority'] <= 3:
             raise ValueError('Priority must be 0..3')
+        if 'title_zh' in item:
+            chinese_title(source, item['title_zh'])
         intro = explained(source, item['intro'], required=True)
         note = explained(source, item['note'])
         offer = quote(source, item['offer_quote'])
@@ -175,8 +199,10 @@ def render(records, annotations, batch_size=15):
             lines += ['### ' + cell(group) + suffix, '',
                       '| 商品与介绍 | 到手价与折扣（原文） | 购买条件（原文） | 优惠说明 | 商家与来源 |',
                       '| --- | --- | --- | --- | --- |']
-        # The original title stays visible even when the Chinese explanation is wrong.
-        product = cell(source['title']) + '<br>' + cell(intro)
+        # Legacy annotations still render their original title. New batches require
+        # a validated Chinese title; source titles stay in the immutable snapshot.
+        title = item['title_zh']['text'] if 'title_zh' in item else source['title']
+        product = cell(title) + '<br>' + cell(intro)
         host = urlsplit(source.get('merchant_url') or '').hostname or source.get('store') or ''
         origin = (cell(host) + '；' if host else '') + '[原帖 ' + str(source['node_id']) + '](' + source['link'] + ')'
         info = []
