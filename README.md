@@ -58,6 +58,12 @@ python3 scripts/fetch_comments.py https://www.ozbargain.com.au/node/977982 --lim
 
 RSS 只覆盖当前返回条目；超市结果来自社区投稿。`ATL` 是帖子关键词，独立历史记录未核对时 `history_verified=false`。评论读取当前页且过滤短评，不自动翻页。访问失败由助手补读公开页面或浏览器。
 
+## 表格与来源绑定
+
+多条优惠表格由 `scripts/render_report.py` 从抓取快照生成，原始商品标题与链接取自同一记录。模型每批处理 15 条，只补充带原文依据的中文说明、分类和排序；价格与条件使用同条原文引用。脚本拒绝未知节点、重复／遗漏、节点链接不匹配、快照变化及无来源引用。最终表格直接贴在对话，不用工作文件替代正文。
+
+使用流程与 annotation 字段见 [表格绑定说明](references/report-binding.md)。本地校验检查数据对应关系，不检查实时网页状态；中文释义仍需逐批核对。
+
 ## 更新与版本
 
 重新运行安装命令即可更新到 `main`，或让助手执行：
@@ -72,7 +78,7 @@ Codex 终端更新：
 python3 ~/.agents/skills/ozbargain-radar/install.py --agent codex
 ```
 
-固定版本：安装或更新时加 `--ref v1.0.4`。回到持续更新版加 `--ref main`。安装器使用 Git 快进合并；发现本地修改或不同仓库时停止，不覆盖文件。
+固定版本：安装或更新时加 `--ref v1.0.5`。回到持续更新版加 `--ref main`。安装器使用 Git 快进合并；发现本地修改或不同仓库时停止，不覆盖文件。
 
 不使用 Git 时，从 [Releases](https://github.com/Cui-Owen/ozbargain-radar/releases) 下载 ZIP，解压成 `ozbargain-radar` 文件夹放入技能目录；升级时替换该文件夹。
 
@@ -88,7 +94,7 @@ python3 -m unittest discover -s tests -v
 
 修改后提交 PR。报告问题时附命令、公开来源 URL、Python 版本和实际结果，入口为 [Issues](https://github.com/Cui-Owen/ozbargain-radar/issues)。
 
-维护者发布：更新 `VERSION`、`CHANGELOG.md`，提交后推送同版本标签（如 `v1.0.4`）。Actions 校验、测试并创建带 ZIP 和 SHA256 的 GitHub Release。`main` 是日常更新通道，Release 标签供固定版本使用。
+维护者发布：更新 `VERSION`、`CHANGELOG.md`，提交后推送同版本标签（如 `v1.0.5`）。Actions 校验、测试并创建带 ZIP 和 SHA256 的 GitHub Release。`main` 是日常更新通道，Release 标签供固定版本使用。
 
 基于 [Agent Skills](https://agentskills.io/) 格式；Codex 的技能发现路径见 [官方文档](https://developers.openai.com/codex/skills/)。
 
